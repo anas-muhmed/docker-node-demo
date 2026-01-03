@@ -10,9 +10,20 @@ const client = new MongoClient(mongoUrl);
 let server;
 
 async function start() {
-  await client.connect();
+  let dbReady = false;
 
-  log('Connected to MongoDB');
+try {
+  await client.connect();
+  dbReady = true;
+  log("Connected to MongoDB");if (!dbReady) {
+  res.writeHead(200, {'Content-Type': 'text/plain'});
+  return res.end(`Hello from ${appName}. DB offline.`);
+}
+
+} catch (err) {
+  log("MongoDB not available — running in degraded mode");
+}
+
   log(`${appName} running on ${port}`); 
 
   server = http.createServer(async (req, res) => {
@@ -21,7 +32,8 @@ async function start() {
     
     if (req.url === '/health') {
       res.writeHead(200, {'Content-Type': 'application/json'});
-      return res.end(JSON.stringify({ status: 'ok', db: 'connected' }));
+      return res.end(JSON.stringify({ status: 'ok', db: dbReady ? 'connected' : 'unavailable' }));
+
     }
 
     const db = client.db('demo');
@@ -29,6 +41,7 @@ async function start() {
 
     await visits.insertOne({ time: new Date() });
     const count = await visits.countDocuments();
+
 
     res.writeHead(200, {'Content-Type': 'text/plain'});
     res.end(`Hello from ${appName}. Visits: ${count}`);
