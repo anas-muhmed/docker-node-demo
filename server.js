@@ -12,28 +12,30 @@ let server;
 async function start() {
   let dbReady = false;
 
-try {
-  await client.connect();
-  dbReady = true;
-  log("Connected to MongoDB");if (!dbReady) {
-  res.writeHead(200, {'Content-Type': 'text/plain'});
-  return res.end(`Hello from ${appName}. DB offline.`);
+async function connectDB() {
+  try {
+    await client.connect();
+    dbReady = true;
+    log("Connected to MongoDB");
+  } catch (err) {
+    log("MongoDB not available — running in degraded mode");
+  }
 }
 
-} catch (err) {
-  log("MongoDB not available — running in degraded mode");
-}
-
-  log(`${appName} running on ${port}`); 
+async function start() {
+  connectDB(); // do NOT await
 
   server = http.createServer(async (req, res) => {
-    
     log(`Request: ${req.method} ${req.url}`);
-    
+
     if (req.url === '/health') {
       res.writeHead(200, {'Content-Type': 'application/json'});
       return res.end(JSON.stringify({ status: 'ok', db: dbReady ? 'connected' : 'unavailable' }));
+    }
 
+    if (!dbReady) {
+      res.writeHead(200, {'Content-Type': 'text/plain'});
+      return res.end(`Hello from ${appName}. DB offline.`);
     }
 
     const db = client.db('demo');
@@ -42,13 +44,14 @@ try {
     await visits.insertOne({ time: new Date() });
     const count = await visits.countDocuments();
 
-
     res.writeHead(200, {'Content-Type': 'text/plain'});
     res.end(`Hello from ${appName}. Visits: ${count}`);
   });
 
   server.listen(port, () => log(`${appName} running on ${port}`));
 }
+
+    
 
 async function shutdown() {
   log('Shutting down gracefully...');
