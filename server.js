@@ -8,9 +8,7 @@ const mongoUrl = process.env.MONGO_URL || 'mongodb://mongo:27017';
 
 const client = new MongoClient(mongoUrl);
 let server;
-
-async function start() {
-  let dbReady = false;
+let dbReady = false;
 
 async function connectDB() {
   try {
@@ -50,8 +48,6 @@ async function start() {
 
   server.listen(port, () => log(`${appName} running on ${port}`));
 }
-
-    
 
 async function shutdown() {
   log('Shutting down gracefully...');
